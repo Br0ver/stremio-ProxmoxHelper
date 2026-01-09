@@ -97,28 +97,28 @@ set -e
     
 msg_ok "Set Up Hardware Acceleration"  
 
-msg_info "Setting Up streamio user"
-useradd -d /home/streamio -m streamio &>/dev/null
-gpasswd -a streamio audio &>/dev/null
-gpasswd -a streamio video &>/dev/null
-gpasswd -a streamio render &>/dev/null
+msg_info "Setting Up stremio user"
+useradd -d /home/stremio -m stremio &>/dev/null
+gpasswd -a stremio audio &>/dev/null
+gpasswd -a stremio video &>/dev/null
+gpasswd -a stremio render &>/dev/null
 groupadd -r autologin &>/dev/null
-gpasswd -a streamio autologin &>/dev/null
-gpasswd -a streamio input &>/dev/null #to enable direct access to devices
-msg_ok "Set Up streamio user"
+gpasswd -a stremio autologin &>/dev/null
+gpasswd -a stremio input &>/dev/null #to enable direct access to devices
+msg_ok "Set Up stremio user"
 
 msg_info "Configuring Audio"
 apt-get install -y pulseaudio &>/dev/null
 apt-get install -y alsa-utils &>/dev/null
 # Configure PulseAudio to use HDMI audio directly
-mkdir -p /home/streamio/.config/pulse
-cat > /home/streamio/.config/pulse/default.pa << __EOF__
+mkdir -p /home/stremio/.config/pulse
+cat > /home/stremio/.config/pulse/default.pa << __EOF__
 .include /etc/pulse/default.pa
 # Load ALSA sink for HDMI (device 3, 7, or 8 are typically HDMI)
 load-module module-alsa-sink device=hw:0,3 sink_name=hdmi_output
 set-default-sink hdmi_output
 __EOF__
-chown -R streamio:streamio /home/streamio/.config/pulse
+chown -R stremio:stremio /home/stremio/.config/pulse
 msg_ok "Configured Audio"
 
 msg_info "Installing lightdm"
@@ -135,28 +135,28 @@ rm stremio_4.4.168-1_amd64.deb
 msg_ok "Installed Streamio"
 
 msg_info "Updating xsession"
-cat <<EOF >/usr/share/xsessions/streamio.desktop
+cat <<EOF >/usr/share/xsessions/stremio.desktop
 [Desktop Entry]
-Name=Streamio
-Comment=This session will start Streamio media player. remove to use service instead
+Name=Stremio
+Comment=This session will start Stremio media player. remove to use service instead
 # Exec=/usr/bin/stremio
 # TryExec=/usr/bin/stremio
 Type=Application
 EOF
 
-# Set environment variables for streamio user
-cat <<EOF >/home/streamio/.xprofile
+# Set environment variables for stremio user
+cat <<EOF >/home/stremio/.xprofile
 export DISPLAY=:0
-export XAUTHORITY=/var/run/lightdm/streamio/:0
+export XAUTHORITY=/var/run/lightdm/stremio/:0
 EOF
-chown streamio:streamio /home/streamio/.xprofile
+chown stremio:stremio /home/stremio/.xprofile
 msg_ok "Updated xsession"
 
 msg_info "Setting up autologin"
-cat <<EOF >/etc/lightdm/lightdm.conf.d/autologin-streamio.conf
+cat <<EOF >/etc/lightdm/lightdm.conf.d/autologin-stremio.conf
 [Seat:*]
-autologin-user=streamio
-autologin-session=streamio
+autologin-user=stremio
+autologin-session=stremio
 xserver-command=X -core :0 vt7
 EOF
 msg_ok "Set up autologin"
@@ -200,7 +200,7 @@ rm -f /etc/X11/xorg.conf.d/20-display.conf
 cat > /etc/systemd/system/lightdm.service.d/override.conf << __EOF__
 [Service]
 ExecStartPre=/bin/sh -c '/usr/local/bin/preX-populate-input.sh'
-ExecStartPost=-/bin/sh -c 'sleep 3 && export XAUTHORITY=/var/run/lightdm/root/:0 && export DISPLAY=:0 && xhost +SI:localuser:streamio'
+ExecStartPost=-/bin/sh -c 'sleep 3 && export XAUTHORITY=/var/run/lightdm/root/:0 && export DISPLAY=:0 && xhost +SI:localuser:stremio'
 SupplementaryGroups=video render input audio tty
 __EOF__
 systemctl daemon-reload
@@ -228,19 +228,19 @@ apt-get autoremove >/dev/null
 apt-get autoclean >/dev/null
 msg_ok "Cleaned"
 
-msg_info "Setting up Streamio autostart"
-# Configure openbox to start Streamio fullscreen
-mkdir -p /home/streamio/.config/openbox
-cat > /home/streamio/.config/openbox/autostart << __EOF__
+msg_info "Setting up Stremio autostart"
+# Configure openbox to start Stremio fullscreen
+mkdir -p /home/stremio/.config/openbox
+cat > /home/stremio/.config/openbox/autostart << __EOF__
 # Start PulseAudio
 pulseaudio --start --log-target=syslog &
 sleep 2
-# Start Streamio
+# Start Stremio
 stremio &
 __EOF__
 
-# Configure openbox to force Streamio fullscreen and undecorated
-cat > /home/streamio/.config/openbox/rc.xml << __EOF__
+# Configure openbox to force Stremio fullscreen and undecorated
+cat > /home/stremio/.config/openbox/rc.xml << __EOF__
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_config xmlns="http://openbox.org/3.4/rc" xmlns:xi="http://www.w3.org/2001/XInclude">
   <applications>
@@ -252,18 +252,18 @@ cat > /home/streamio/.config/openbox/rc.xml << __EOF__
   </applications>
 </openbox_config>
 __EOF__
-chown -R streamio:streamio /home/streamio/.config
+chown -R stremio:stremio /home/stremio/.config
 
-cat > /etc/systemd/system/streamio-app.service << __EOF__
+cat > /etc/systemd/system/stremio-app.service << __EOF__
 [Unit]
-Description=Streamio Application
+Description=Stremio Application
 After=lightdm.service
 Requires=lightdm.service
 
 [Service]
 Type=simple
-User=streamio
-Group=streamio
+User=stremio
+Group=stremio
 Environment="DISPLAY=:0"
 ExecStartPre=/bin/sleep 5
 ExecStart=/usr/bin/openbox-session
@@ -274,14 +274,14 @@ RestartSec=10
 WantedBy=multi-user.target
 __EOF__
 systemctl daemon-reload
-systemctl enable streamio-app.service
-msg_ok "Set up Streamio autostart"
+systemctl enable stremio-app.service
+msg_ok "Set up Stremio autostart"
 
 msg_info "Starting X up"
 systemctl start lightdm
 ln -fs /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.service
 msg_ok "Started X"
 
-msg_info "Starting Streamio"
-systemctl start streamio-app.service
-msg_ok "Started Streamio"
+msg_info "Starting Stremio"
+systemctl start stremio-app.service
+msg_ok "Started Stremio"

@@ -9,7 +9,7 @@ based on great work of https://github.com/tteck/Proxmox
 ## To create a new Proxmox Streamio Media Player, run the following in the Proxmox Shell.
 
 ```yaml
-bash -c "$(wget -qLO - https://raw.githubusercontent.com/Br0ver/streamio-ProxmoxHelper/main/ct/streamio-v1.sh)"
+bash -c "$(wget -qLO - https://raw.githubusercontent.com/Br0ver/stremio-ProxmoxHelper/main/ct/stremio-v1.sh)"
 ```
 
 Streamio should be attached to TTY7 console

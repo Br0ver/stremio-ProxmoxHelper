@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 echo -e "Loading..."
-APP="Streamio"
+APP="Stremio"
 var_disk="8"
 var_cpu="2"
 var_ram="2048"
@@ -44,7 +44,7 @@ else
     exit
 fi
 function header_info {
-echo -e "Streamio---------\n\n"
+echo -e "Stremio---------\n\n"
 }
 function msg_info() {
     local msg="$1"
@@ -304,7 +304,7 @@ msg_info "Starting LXC Container"
 pct start $CTID
 msg_ok "Started LXC Container"
 
-lxc-attach -n $CTID -- bash -c "$(wget -qLO - https://raw.githubusercontent.com/Br0ver/streamio-ProxmoxHelper/main/setup/$var_install.sh)" || exit
+lxc-attach -n $CTID -- bash -c "$(wget -qLO - https://raw.githubusercontent.com/Br0ver/stremio-ProxmoxHelper/main/setup/$var_install.sh)" || exit
 IP=$(pct exec $CTID ip a s dev eth0 | sed -n '/inet / s/\// /p' | awk '{print $2}')
 pct set $CTID -description "# ${APP} LXC"
 msg_ok "Completed Successfully!\n"
