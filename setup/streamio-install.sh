@@ -76,6 +76,15 @@ apt-get install -y wget &>/dev/null
 apt-get install -y gnupg &>/dev/null
 msg_ok "Installed Dependencies"
 
+msg_info "Installing Additional Libraries"
+cd /tmp
+wget -q http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1-1ubuntu2.1~18.04.23_amd64.deb
+dpkg -i libssl1.1_1.1.1-1ubuntu2.1~18.04.23_amd64.deb &>/dev/null
+wget -q http://archive.ubuntu.com/ubuntu/pool/multiverse/f/fdk-aac/libfdk-aac1_0.1.6-1_amd64.deb
+dpkg -i libfdk-aac1_0.1.6-1_amd64.deb &>/dev/null
+rm -f libssl1.1_*.deb libfdk-aac1_*.deb
+msg_ok "Installed Additional Libraries"
+
 msg_info "Setting Up Hardware Acceleration"  
 apt-get -y install \
     va-driver-all \
@@ -119,6 +128,13 @@ Exec=/usr/bin/stremio
 TryExec=/usr/bin/stremio
 Type=Application
 EOF
+
+# Set environment variables for streamio user
+cat <<EOF >/home/streamio/.xprofile
+export DISPLAY=:0
+export XAUTHORITY=/var/run/lightdm/streamio/:0
+EOF
+chown streamio:streamio /home/streamio/.xprofile
 msg_ok "Updated xsession"
 
 msg_info "Setting up autologin"
@@ -126,6 +142,7 @@ cat <<EOF >/etc/lightdm/lightdm.conf.d/autologin-streamio.conf
 [Seat:*]
 autologin-user=streamio
 autologin-session=streamio
+xserver-command=X -core :0 vt7
 EOF
 msg_ok "Set up autologin"
 
