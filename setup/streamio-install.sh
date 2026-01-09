@@ -181,7 +181,7 @@ __EOF__
 cat > /etc/systemd/system/lightdm.service.d/override.conf << __EOF__
 [Service]
 ExecStartPre=/bin/sh -c '/usr/local/bin/preX-populate-input.sh'
-ExecStartPost=/bin/sh -c 'sleep 3 && DISPLAY=:0 xhost +SI:localuser:streamio'
+ExecStartPost=-/bin/sh -c 'sleep 3 && export XAUTHORITY=/var/run/lightdm/root/:0 && export DISPLAY=:0 && xhost +SI:localuser:streamio'
 SupplementaryGroups=video render input audio tty
 __EOF__
 systemctl daemon-reload
