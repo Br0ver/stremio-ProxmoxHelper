@@ -181,6 +181,7 @@ __EOF__
 cat > /etc/systemd/system/lightdm.service.d/override.conf << __EOF__
 [Service]
 ExecStartPre=/bin/sh -c '/usr/local/bin/preX-populate-input.sh'
+ExecStartPost=/bin/sh -c 'sleep 3 && DISPLAY=:0 xhost +SI:localuser:streamio'
 SupplementaryGroups=video render input audio tty
 __EOF__
 systemctl daemon-reload
@@ -208,7 +209,35 @@ apt-get autoremove >/dev/null
 apt-get autoclean >/dev/null
 msg_ok "Cleaned"
 
+msg_info "Setting up Streamio autostart"
+cat > /etc/systemd/system/streamio-app.service << __EOF__
+[Unit]
+Description=Streamio Application
+After=lightdm.service
+Requires=lightdm.service
+
+[Service]
+Type=simple
+User=streamio
+Group=streamio
+Environment="DISPLAY=:0"
+ExecStartPre=/bin/sleep 5
+ExecStart=/usr/bin/stremio
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+__EOF__
+systemctl daemon-reload
+systemctl enable streamio-app.service
+msg_ok "Set up Streamio autostart"
+
 msg_info "Starting X up"
 systemctl start lightdm
 ln -fs /lib/systemd/system/lightdm.service /etc/systemd/system/display-manager.service
 msg_ok "Started X"
+
+msg_info "Starting Streamio"
+systemctl start streamio-app.service
+msg_ok "Started Streamio"
