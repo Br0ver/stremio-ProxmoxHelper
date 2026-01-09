@@ -109,6 +109,7 @@ msg_ok "Set Up streamio user"
 
 msg_info "Installing lightdm"
 DEBIAN_FRONTEND=noninteractive apt-get install -y lightdm &>/dev/null
+DEBIAN_FRONTEND=noninteractive apt-get install -y openbox &>/dev/null
 echo "/usr/sbin/lightdm" > /etc/X11/default-display-manager
 msg_ok "Installed lightdm"
 
@@ -123,9 +124,9 @@ msg_info "Updating xsession"
 cat <<EOF >/usr/share/xsessions/streamio.desktop
 [Desktop Entry]
 Name=Streamio
-Comment=This session will start Streamio media player
-Exec=/usr/bin/stremio
-TryExec=/usr/bin/stremio
+Comment=This session will start Streamio media player. remove to use service instead
+# Exec=/usr/bin/stremio
+# TryExec=/usr/bin/stremio
 Type=Application
 EOF
 
@@ -177,6 +178,10 @@ _EOF_
 done
 __EOF__
 /bin/chmod +x /usr/local/bin/preX-populate-input.sh
+
+# Remove fixed resolution config - let X auto-detect
+rm -f /etc/X11/xorg.conf.d/20-display.conf
+
 /bin/mkdir -p /etc/systemd/system/lightdm.service.d
 cat > /etc/systemd/system/lightdm.service.d/override.conf << __EOF__
 [Service]
@@ -210,6 +215,28 @@ apt-get autoclean >/dev/null
 msg_ok "Cleaned"
 
 msg_info "Setting up Streamio autostart"
+# Configure openbox to start Streamio fullscreen
+mkdir -p /home/streamio/.config/openbox
+cat > /home/streamio/.config/openbox/autostart << __EOF__
+# Start Streamio in fullscreen
+stremio &
+__EOF__
+
+# Configure openbox to force Streamio fullscreen and undecorated
+cat > /home/streamio/.config/openbox/rc.xml << __EOF__
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <applications>
+    <application name="stremio" class="Stremio">
+      <decor>no</decor>
+      <fullscreen>yes</fullscreen>
+      <maximized>yes</maximized>
+    </application>
+  </applications>
+</openbox_config>
+__EOF__
+chown -R streamio:streamio /home/streamio/.config
+
 cat > /etc/systemd/system/streamio-app.service << __EOF__
 [Unit]
 Description=Streamio Application
@@ -222,7 +249,7 @@ User=streamio
 Group=streamio
 Environment="DISPLAY=:0"
 ExecStartPre=/bin/sleep 5
-ExecStart=/usr/bin/stremio
+ExecStart=/usr/bin/openbox-session
 Restart=always
 RestartSec=10
 
