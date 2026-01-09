@@ -107,6 +107,20 @@ gpasswd -a streamio autologin &>/dev/null
 gpasswd -a streamio input &>/dev/null #to enable direct access to devices
 msg_ok "Set Up streamio user"
 
+msg_info "Configuring Audio"
+apt-get install -y pulseaudio &>/dev/null
+apt-get install -y alsa-utils &>/dev/null
+# Configure PulseAudio to use HDMI audio directly
+mkdir -p /home/streamio/.config/pulse
+cat > /home/streamio/.config/pulse/default.pa << __EOF__
+.include /etc/pulse/default.pa
+# Load ALSA sink for HDMI (device 3, 7, or 8 are typically HDMI)
+load-module module-alsa-sink device=hw:0,3 sink_name=hdmi_output
+set-default-sink hdmi_output
+__EOF__
+chown -R streamio:streamio /home/streamio/.config/pulse
+msg_ok "Configured Audio"
+
 msg_info "Installing lightdm"
 DEBIAN_FRONTEND=noninteractive apt-get install -y lightdm &>/dev/null
 DEBIAN_FRONTEND=noninteractive apt-get install -y openbox &>/dev/null
@@ -218,7 +232,10 @@ msg_info "Setting up Streamio autostart"
 # Configure openbox to start Streamio fullscreen
 mkdir -p /home/streamio/.config/openbox
 cat > /home/streamio/.config/openbox/autostart << __EOF__
-# Start Streamio in fullscreen
+# Start PulseAudio
+pulseaudio --start --log-target=syslog &
+sleep 2
+# Start Streamio
 stremio &
 __EOF__
 
