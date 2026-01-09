@@ -277,7 +277,7 @@ EOF
     echo "$LXC_SUB_CONF" | grep 'lxc.idmap: g ' >> $LXC_CONFIG
     # on host add rights to map gids but only if they are not already in the file
     echo "$LXC_SUB_CONF" | sed -n '/subgid/,// { /subgid/! p }' | while read line; do cat /etc/subgid | sed 's/[[:blank:]]*//g' | grep -qxF "$line" || echo $line >> /etc/subgid; done
-    /usr/bin/systemctl restart lxc
+    #/usr/bin/systemctl restart lxc  # remove restart for now as it causes issues with proxmox cluster
 else
     cat <<EOF >> $LXC_CONFIG
 lxc.hook.mount: sh -c "/var/lib/lxc/${CTID}/mount_hook.sh"
