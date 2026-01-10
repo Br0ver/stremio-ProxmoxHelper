@@ -128,6 +128,7 @@ cat <<EOF >/etc/lightdm/lightdm.conf.d/autologin-kodi.conf
 [Seat:*]
 autologin-user=kodi
 autologin-session=kodi-alsa
+xserver-command=X -s 0 -dpms
 EOF
 msg_ok "Set up autologin"
 
@@ -162,6 +163,27 @@ _EOF_
 done
 __EOF__
 /bin/chmod +x /usr/local/bin/preX-populate-input.sh
+
+# Create X11 config to disable DPMS and screen blanking
+cat > /etc/X11/xorg.conf.d/90-dpms.conf << __EOF__
+Section "ServerLayout"
+    Identifier "ServerLayout0"
+    Option "BlankTime"   "0"
+    Option "StandbyTime" "0"
+    Option "SuspendTime" "0"
+    Option "OffTime"     "0"
+EndSection
+
+Section "Monitor"
+    Identifier "Monitor0"
+    Option "DPMS" "false"
+EndSection
+
+Section "Extensions"
+    Option "DPMS" "Disable"
+EndSection
+__EOF__
+
 /bin/mkdir -p /etc/systemd/system/lightdm.service.d
 cat > /etc/systemd/system/lightdm.service.d/override.conf << __EOF__
 [Service]
@@ -187,6 +209,40 @@ systemctl daemon-reload
 systemctl restart $(basename $(dirname $GETTY_OVERRIDE) | sed 's/\.d//')
 msg_ok "Customized Container"
   fi
+
+msg_info "Setting up screen keepalive service"
+cat > /etc/systemd/system/screen-keepalive.service << __EOF__
+[Unit]
+Description=Keep screen alive by disabling DPMS
+After=lightdm.service
+
+[Service]
+Type=oneshot
+User=kodi
+Environment="DISPLAY=:0"
+ExecStart=/bin/bash -c 'DISPLAY=:0 xset s off; DISPLAY=:0 xset s noblank; DISPLAY=:0 xset -dpms'
+
+[Install]
+WantedBy=multi-user.target
+__EOF__
+
+cat > /etc/systemd/system/screen-keepalive.timer << __EOF__
+[Unit]
+Description=Keep screen alive timer
+After=lightdm.service
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+__EOF__
+
+systemctl daemon-reload
+systemctl enable screen-keepalive.timer
+systemctl start screen-keepalive.timer
+msg_ok "Set up screen keepalive service"
   
 msg_info "Cleaning up"
 apt-get autoremove >/dev/null

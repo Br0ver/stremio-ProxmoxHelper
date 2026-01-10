@@ -114,9 +114,9 @@ apt-get install -y alsa-utils &>/dev/null
 mkdir -p /home/stremio/.config/pulse
 cat > /home/stremio/.config/pulse/default.pa << __EOF__
 .include /etc/pulse/default.pa
-# Load ALSA sink for HDMI (device 3, 7, or 8 are typically HDMI)
-load-module module-alsa-sink device=hw:0,3 sink_name=hdmi_output
-set-default-sink hdmi_output
+# Load ALSA sink for HDMI device 3 (SAMSUNG TV)
+load-module module-alsa-sink device=hw:0,3 sink_name=hdmi_samsung
+set-default-sink hdmi_samsung
 __EOF__
 chown -R stremio:stremio /home/stremio/.config/pulse
 msg_ok "Configured Audio"
@@ -157,7 +157,7 @@ cat <<EOF >/etc/lightdm/lightdm.conf.d/autologin-stremio.conf
 [Seat:*]
 autologin-user=stremio
 autologin-session=stremio
-xserver-command=X -core :0 vt7
+xserver-command=X -core -s 0 -dpms :0 vt7
 EOF
 msg_ok "Set up autologin"
 
@@ -196,6 +196,26 @@ __EOF__
 # Remove fixed resolution config - let X auto-detect
 rm -f /etc/X11/xorg.conf.d/20-display.conf
 
+# Create X11 config to disable DPMS and screen blanking
+cat > /etc/X11/xorg.conf.d/90-dpms.conf << __EOF__
+Section "ServerLayout"
+    Identifier "ServerLayout0"
+    Option "BlankTime"   "0"
+    Option "StandbyTime" "0"
+    Option "SuspendTime" "0"
+    Option "OffTime"     "0"
+EndSection
+
+Section "Monitor"
+    Identifier "Monitor0"
+    Option "DPMS" "false"
+EndSection
+
+Section "Extensions"
+    Option "DPMS" "Disable"
+EndSection
+__EOF__
+
 /bin/mkdir -p /etc/systemd/system/lightdm.service.d
 cat > /etc/systemd/system/lightdm.service.d/override.conf << __EOF__
 [Service]
@@ -232,6 +252,12 @@ msg_info "Setting up Stremio autostart"
 # Configure openbox to start Stremio fullscreen
 mkdir -p /home/stremio/.config/openbox
 cat > /home/stremio/.config/openbox/autostart << __EOF__
+# Disable screen blanking and DPMS
+xset s off
+xset s noblank
+xset -dpms
+# Set runtime directory
+export XDG_RUNTIME_DIR=/run/user/1000
 # Start PulseAudio
 pulseaudio --start --log-target=syslog &
 sleep 2
@@ -265,6 +291,10 @@ Type=simple
 User=stremio
 Group=stremio
 Environment="DISPLAY=:0"
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+ExecStartPre=/bin/mkdir -p /run/user/1000
+ExecStartPre=/bin/chown stremio:stremio /run/user/1000
+ExecStartPre=/bin/chmod 700 /run/user/1000
 ExecStartPre=/bin/sleep 5
 ExecStart=/usr/bin/openbox-session
 Restart=always
@@ -276,6 +306,46 @@ __EOF__
 systemctl daemon-reload
 systemctl enable stremio-app.service
 msg_ok "Set up Stremio autostart"
+
+msg_info "Creating runtime directory"
+mkdir -p /run/user/1000
+chown stremio:stremio /run/user/1000
+chmod 700 /run/user/1000
+msg_ok "Created runtime directory"
+
+msg_info "Setting up screen keepalive service"
+cat > /etc/systemd/system/screen-keepalive.service << __EOF__
+[Unit]
+Description=Keep screen alive by disabling DPMS
+After=lightdm.service
+
+[Service]
+Type=oneshot
+User=stremio
+Environment="DISPLAY=:0"
+ExecStart=/bin/bash -c 'DISPLAY=:0 xset s off; DISPLAY=:0 xset s noblank; DISPLAY=:0 xset -dpms'
+
+[Install]
+WantedBy=multi-user.target
+__EOF__
+
+cat > /etc/systemd/system/screen-keepalive.timer << __EOF__
+[Unit]
+Description=Keep screen alive timer
+After=lightdm.service
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+__EOF__
+
+systemctl daemon-reload
+systemctl enable screen-keepalive.timer
+systemctl start screen-keepalive.timer
+msg_ok "Set up screen keepalive service"
 
 msg_info "Starting X up"
 systemctl start lightdm
